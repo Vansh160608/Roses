@@ -1,0 +1,1652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3D Low-Poly Red Rose Bouquet — Velours de Roses</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #fde6df 0%, #f7d4de 42%, #dccfe8 76%, #bcc8e6 100%);
+      transition: background 0.6s ease;
+    }
+    .serif-title {
+      font-family: 'Playfair Display', Georgia, serif;
+    }
+    #canvas-container {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      cursor: grab;
+    }
+    #canvas-container:active {
+      cursor: grabbing;
+    }
+    .soft-glass {
+      background: rgba(255, 250, 252, 0.76);
+      backdrop-filter: blur(22px);
+      -webkit-backdrop-filter: blur(22px);
+      border: 1px solid rgba(255, 255, 255, 0.78);
+      box-shadow: 0 20px 45px rgba(120, 35, 60, 0.11), 0 4px 12px rgba(120, 35, 60, 0.05);
+    }
+    .soft-pill {
+      background: rgba(255, 252, 253, 0.82);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.82);
+      box-shadow: 0 8px 24px rgba(120, 35, 60, 0.08);
+    }
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: rgba(190, 24, 60, 0.14);
+      height: 6px;
+      border-radius: 999px;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #d62839;
+      cursor: pointer;
+      border: 2px solid #fff;
+      box-shadow: 0 2px 6px rgba(136, 19, 55, 0.3);
+      transition: transform 0.15s ease;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+    }
+    .custom-scroll::-webkit-scrollbar {
+      width: 5px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: rgba(190, 24, 60, 0.2);
+      border-radius: 999px;
+    }
+  </style>
+</head>
+<body class="text-rose-950 antialiased selection:bg-rose-500 selection:text-white">
+
+  <!-- 3D WebGL Viewport -->
+  <div id="canvas-container" aria-label="Interactive 3D Low-Poly Red Rose Bouquet"></div>
+
+  <!-- Top Header & Quick Actions -->
+  <header class="fixed top-0 left-0 right-0 z-20 pointer-events-none p-3 sm:p-5 flex flex-wrap items-start justify-between gap-3">
+    <div class="soft-pill pointer-events-auto rounded-2xl px-4 py-2.5 flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-rose-500 via-red-600 to-rose-900 flex items-center justify-center shadow-md shadow-rose-500/25 text-white text-lg">
+        🌹
+      </div>
+      <div>
+        <h1 class="serif-title text-base sm:text-lg font-bold tracking-wide text-rose-950 leading-tight">Velours de Roses</h1>
+        <p class="text-[11px] sm:text-xs text-rose-800/75">Sculpted Low-Poly Crimson & Coral-Red Rose Bouquet</p>
+      </div>
+    </div>
+
+    <!-- Top Right Action Bar -->
+    <div class="flex flex-wrap items-center gap-2 pointer-events-auto">
+      <div id="poly-counter" class="soft-pill rounded-xl px-3 py-1.5 text-xs font-medium text-rose-900/80 hidden md:flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+        <span id="stats-text">29 Sculpted Low-Poly Roses</span>
+      </div>
+
+      <!-- Camera Angle Quick Presets -->
+      <div class="soft-pill rounded-xl p-1 hidden sm:flex items-center gap-1">
+        <button id="cam-front" type="button" class="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-rose-600 text-white transition">
+          Bouquet
+        </button>
+        <button id="cam-top" type="button" class="px-2.5 py-1 rounded-lg text-[11px] font-medium text-rose-900 hover:bg-rose-100/70 transition">
+          Crown Dome
+        </button>
+        <button id="cam-macro" type="button" class="px-2.5 py-1 rounded-lg text-[11px] font-medium text-rose-900 hover:bg-rose-100/70 transition">
+          Close-Up
+        </button>
+      </div>
+
+      <button id="btn-wireframe" type="button" class="soft-pill hover:bg-white/95 active:scale-95 transition rounded-xl px-3 py-2 text-xs font-medium flex items-center gap-1.5 text-rose-900" title="Toggle Polygon Facet Lines">
+        <svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+        </svg>
+        <span id="wireframe-label">Polygons: Soft Lines</span>
+      </button>
+
+      <button id="btn-sound" type="button" class="soft-pill hover:bg-white/95 active:scale-95 transition rounded-xl px-3 py-2 text-xs font-medium flex items-center gap-1.5 text-rose-900" title="Toggle Soft Harp Chimes">
+        <svg id="icon-sound-on" class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+        </svg>
+        <span id="sound-label">Chimes: On</span>
+      </button>
+
+      <button id="btn-toggle-ui" type="button" class="soft-pill hover:bg-white/95 active:scale-95 transition rounded-xl px-3 py-2 text-xs font-medium flex items-center gap-1.5 text-rose-900">
+        <svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
+        </svg>
+        <span id="toggle-ui-label">Hide Controls</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Selected Rose Inspection Card -->
+  <div id="flower-inspector" class="fixed bottom-4 left-3 sm:left-5 z-20 max-w-xs pointer-events-auto soft-glass rounded-2xl p-3.5 transition-all duration-300">
+    <div class="flex items-start gap-3">
+      <div id="inspector-swatch" class="w-9 h-9 rounded-xl shrink-0 flex items-center justify-center text-lg shadow-sm text-white" style="background: linear-gradient(135deg, #f2645a, #8c111f);">
+        🌹
+      </div>
+      <div class="min-w-0 flex-1">
+        <div class="flex items-center justify-between gap-2">
+          <span id="inspector-badge" class="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-800 border border-rose-400/30">Centerpiece Rose</span>
+          <span class="text-[10px] text-rose-800/60">Tap any rose</span>
+        </div>
+        <h2 id="inspector-title" class="serif-title text-sm font-semibold text-rose-950 mt-1 truncate">Velvet Crimson & Coral Rose</h2>
+        <p id="inspector-desc" class="text-xs text-rose-900/75 leading-relaxed mt-0.5">7-whorl spiral polygonal petals grading from a deep burgundy heart to coral-red folded lips.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Aesthetic Studio Panel -->
+  <aside id="control-panel" class="fixed top-16 sm:top-20 right-3 sm:right-5 z-20 w-72 sm:w-80 pointer-events-auto transition-transform duration-300">
+    <div class="soft-glass rounded-3xl p-4 sm:p-5 overflow-y-auto custom-scroll max-h-[calc(100vh-6rem)] space-y-4">
+      
+      <!-- Soft Aesthetic Atmosphere -->
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-semibold uppercase tracking-wider text-rose-900/70">Soft Atmosphere</span>
+          <span id="mood-name" class="text-xs text-rose-700 font-semibold">Dreamy Pastel</span>
+        </div>
+        <div class="grid grid-cols-2 gap-1.5">
+          <button type="button" data-mood="pastel" class="mood-btn rounded-xl px-2.5 py-2 text-xs font-medium text-left transition flex items-center gap-2 bg-rose-600 text-white shadow-sm">
+            <span class="w-3 h-3 rounded-full bg-gradient-to-tr from-rose-300 to-indigo-200 shrink-0 border border-white/50"></span>
+            <span>Dreamy Pastel</span>
+          </button>
+          <button type="button" data-mood="golden" class="mood-btn rounded-xl px-2.5 py-2 text-xs font-medium text-left transition flex items-center gap-2 bg-white/60 hover:bg-white/90 border border-rose-200/70 text-rose-950">
+            <span class="w-3 h-3 rounded-full bg-gradient-to-tr from-rose-400 to-amber-200 shrink-0"></span>
+            <span>Golden Hour</span>
+          </button>
+          <button type="button" data-mood="sunlit" class="mood-btn rounded-xl px-2.5 py-2 text-xs font-medium text-left transition flex items-center gap-2 bg-white/60 hover:bg-white/90 border border-rose-200/70 text-rose-950">
+            <span class="w-3 h-3 rounded-full bg-gradient-to-tr from-amber-100 to-rose-200 shrink-0 border border-rose-300/40"></span>
+            <span>Sunlit Garden</span>
+          </button>
+          <button type="button" data-mood="midnight" class="mood-btn rounded-xl px-2.5 py-2 text-xs font-medium text-left transition flex items-center gap-2 bg-white/60 hover:bg-white/90 border border-rose-200/70 text-rose-950">
+            <span class="w-3 h-3 rounded-full bg-gradient-to-tr from-rose-950 to-rose-500 shrink-0"></span>
+            <span>Velvet Night</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Rose Red Tone (Inspired by Reference Images) -->
+      <div class="pt-2 border-t border-rose-900/10">
+        <span class="text-xs font-semibold uppercase tracking-wider text-rose-900/70 block mb-2">Polygonal Rose Shade</span>
+        <div class="grid grid-cols-3 gap-1.5">
+          <button type="button" data-palette="classic" class="palette-btn py-1.5 px-2 rounded-xl text-xs font-medium border-2 border-rose-600 bg-gradient-to-r from-red-700 via-rose-600 to-rose-400 text-white shadow-sm">
+            Ruby Red
+          </button>
+          <button type="button" data-palette="ombre" class="palette-btn py-1.5 px-2 rounded-xl text-xs font-medium border border-rose-300/60 bg-gradient-to-r from-rose-900 via-red-700 to-orange-300 text-white opacity-85 hover:opacity-100">
+            Rose Ombré
+          </button>
+          <button type="button" data-palette="velvet" class="palette-btn py-1.5 px-2 rounded-xl text-xs font-medium border border-rose-300/60 bg-gradient-to-r from-rose-950 via-red-800 to-rose-500 text-white opacity-85 hover:opacity-100">
+            Bordeaux
+          </button>
+        </div>
+      </div>
+
+      <!-- Soft Bouquet Wrap Style -->
+      <div class="pt-2 border-t border-rose-900/10">
+        <span class="text-xs font-semibold uppercase tracking-wider text-rose-900/70 block mb-2">Soft Bouquet Wrap</span>
+        <div class="grid grid-cols-3 gap-1.5">
+          <button type="button" data-wrap="silk" class="wrap-btn rounded-xl py-1.5 px-2 text-xs font-medium transition bg-rose-600 text-white shadow-sm">
+            Blush Silk
+          </button>
+          <button type="button" data-wrap="kraft" class="wrap-btn rounded-xl py-1.5 px-2 text-xs font-medium transition bg-white/60 hover:bg-white/90 border border-rose-200/70 text-rose-950">
+            Origami Wrap
+          </button>
+          <button type="button" data-wrap="vase" class="wrap-btn rounded-xl py-1.5 px-2 text-xs font-medium transition bg-white/60 hover:bg-white/90 border border-rose-200/70 text-rose-950">
+            Crystal Vase
+          </button>
+        </div>
+      </div>
+
+      <!-- Gentle Bloom & Breeze Sliders -->
+      <div class="space-y-3 pt-2 border-t border-rose-900/10">
+        <div>
+          <div class="flex justify-between text-xs mb-1">
+            <label for="slider-bloom" class="text-rose-950 font-medium">Petal Bloom Openness</label>
+            <span id="val-bloom" class="text-rose-700 font-semibold">92%</span>
+          </div>
+          <input id="slider-bloom" type="range" min="50" max="125" value="92" class="w-full" />
+        </div>
+
+        <div>
+          <div class="flex justify-between text-xs mb-1">
+            <label for="slider-breeze" class="text-rose-950 font-medium">Gentle Breeze Sway</label>
+            <span id="val-breeze" class="text-rose-700 font-semibold">35%</span>
+          </div>
+          <input id="slider-breeze" type="range" min="0" max="100" value="35" class="w-full" />
+        </div>
+      </div>
+
+      <!-- Interactive Actions -->
+      <div class="pt-2 border-t border-rose-900/10 flex flex-col gap-2">
+        <div class="grid grid-cols-2 gap-2">
+          <button id="btn-rearrange" type="button" class="rounded-xl py-2.5 px-3 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 active:scale-95 text-white font-semibold text-xs shadow-md shadow-rose-500/25 transition flex items-center justify-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+            <span>New Arrangement</span>
+          </button>
+
+          <button id="btn-petal-shower" type="button" class="rounded-xl py-2.5 px-3 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-400 hover:to-pink-400 active:scale-95 text-white font-semibold text-xs shadow-md shadow-rose-500/20 transition flex items-center justify-center gap-1.5">
+            <span>✨ Petal Burst</span>
+          </button>
+        </div>
+
+        <div class="flex items-center justify-between gap-2 pt-1">
+          <label class="flex items-center gap-2 text-xs text-rose-900 font-medium cursor-pointer">
+            <input id="chk-autorotate" type="checkbox" checked class="rounded accent-rose-600 w-3.5 h-3.5" />
+            <span>Auto-Rotate 360°</span>
+          </label>
+          <button id="btn-reset-cam" type="button" class="text-xs text-rose-700 hover:text-rose-950 font-medium underline">
+            Reset Camera
+          </button>
+        </div>
+      </div>
+
+      <!-- Helper Hint -->
+      <div class="text-[11px] text-rose-900/65 leading-snug pt-1 border-t border-rose-900/10">
+        Drag to rotate 360° • Scroll or pinch to zoom in on the polygon facets • Click any rose to hear it chime.
+      </div>
+    </div>
+  </aside>
+
+  <script>
+    (function () {
+      // ==========================================
+      // 1. STATE & PALETTE CONFIGURATION
+      // ==========================================
+      const state = {
+        bloomFactor: 0.92,
+        breezeStrength: 0.35,
+        wrapStyle: 'silk',         // 'silk' | 'kraft' | 'vase'
+        rosePalette: 'classic',    // 'classic' | 'ombre' | 'velvet'
+        mood: 'pastel',            // 'pastel' | 'golden' | 'sunlit' | 'midnight'
+        wireframeMode: 0,          // 0 = Soft Facet Lines, 1 = Pure Solid, 2 = Wireframe
+        autoRotate: true,
+        soundEnabled: true,
+        seed: 2026,
+        uiVisible: true,
+        petalBurstTime: 0
+      };
+
+      const MOODS = {
+        pastel: {
+          name: 'Dreamy Pastel',
+          bgCss: 'linear-gradient(135deg, #fde6df 0%, #f7d4de 42%, #dccfe8 76%, #bcc8e6 100%)',
+          fogColor: 0xe9d6e3,
+          hemiSky: 0xfff6f4,
+          hemiGround: 0xc9c0e2,
+          hemiIntensity: 0.94,
+          keyColor: 0xfff2e8,
+          keyIntensity: 0.90,
+          rimColor: 0xffb8c6,
+          rimIntensity: 0.68,
+          fillColor: 0xe2e8ff,
+          fillIntensity: 0.48
+        },
+        golden: {
+          name: 'Golden Hour',
+          bgCss: 'linear-gradient(135deg, #ffe5d9 0%, #f9bec7 50%, #d8a7b1 100%)',
+          fogColor: 0xefc2c8,
+          hemiSky: 0xffeedd,
+          hemiGround: 0xd496a7,
+          hemiIntensity: 0.90,
+          keyColor: 0xffd8be,
+          keyIntensity: 0.96,
+          rimColor: 0xff758f,
+          rimIntensity: 0.72,
+          fillColor: 0xfecdd3,
+          fillIntensity: 0.50
+        },
+        sunlit: {
+          name: 'Sunlit Garden',
+          bgCss: 'linear-gradient(135deg, #fffcf7 0%, #fdeee7 55%, #f3d6ce 100%)',
+          fogColor: 0xf7e4dc,
+          hemiSky: 0xffffff,
+          hemiGround: 0xedd2c8,
+          hemiIntensity: 0.98,
+          keyColor: 0xfff3e0,
+          keyIntensity: 0.88,
+          rimColor: 0xffccd5,
+          rimIntensity: 0.58,
+          fillColor: 0xffe4e6,
+          fillIntensity: 0.52
+        },
+        midnight: {
+          name: 'Velvet Night',
+          bgCss: 'linear-gradient(135deg, #26101d 0%, #44192d 55%, #20142f 100%)',
+          fogColor: 0x301424,
+          hemiSky: 0xffdce5,
+          hemiGround: 0x2a1633,
+          hemiIntensity: 0.72,
+          keyColor: 0xffccd5,
+          keyIntensity: 1.08,
+          rimColor: 0xfb7185,
+          rimIntensity: 0.88,
+          fillColor: 0xc4b5fd,
+          fillIntensity: 0.48
+        }
+      };
+
+      // Palettes faithfully tuned to reference low-poly rose illustrations:
+      // Deep velvet plum-burgundy vortex center -> rich crimson body -> warm coral/salmon-blush folded top lips
+      const ROSE_PALETTES = {
+        classic: {
+          vortexDeep: '#2e040e',
+          coreVelvet: '#5e0a19',
+          innerRuby: '#8f1120',
+          midCrimson: '#ba1826',
+          outerScarlet: '#dc2832',
+          coralFold: '#ef544b',
+          salmonHighlight: '#ff857a',
+          edgeLine: 0x3b0510
+        },
+        ombre: {
+          vortexDeep: '#38090d',
+          coreVelvet: '#6b1619',
+          innerRuby: '#992424',
+          midCrimson: '#bd3735',
+          outerScarlet: '#d6504b',
+          coralFold: '#e8736b',
+          salmonHighlight: '#f7a199',
+          edgeLine: 0x2b0708
+        },
+        velvet: {
+          vortexDeep: '#1f0208',
+          coreVelvet: '#470614',
+          innerRuby: '#730b1d',
+          midCrimson: '#9c1127',
+          outerScarlet: '#c21d34',
+          coralFold: '#e03e52',
+          salmonHighlight: '#f26d7c',
+          edgeLine: 0x240208
+        }
+      };
+
+      let currentSeed = state.seed;
+      function seededRandom() {
+        currentSeed = (currentSeed * 16807) % 2147483647;
+        return (currentSeed - 1) / 2147483646;
+      }
+
+      // ==========================================
+      // 2. SOFT HARP / CHIME SYNTHESIZER
+      // ==========================================
+      let audioCtx = null;
+      function playRoseChime(freqBase) {
+        if (!state.soundEnabled) return;
+        try {
+          if (!audioCtx) {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContextClass) return;
+            audioCtx = new AudioContextClass();
+          }
+          if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+          }
+          const now = audioCtx.currentTime;
+          const intervals = [1, 1.25, 1.5, 2.0];
+          intervals.forEach((mult, idx) => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = idx % 2 === 0 ? 'sine' : 'triangle';
+            osc.frequency.setValueAtTime(freqBase * mult, now + idx * 0.055);
+
+            gain.gain.setValueAtTime(0.0001, now + idx * 0.055);
+            gain.gain.exponentialRampToValueAtTime(0.042 / (idx + 1), now + idx * 0.055 + 0.03);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.055 + 0.95);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now + idx * 0.055);
+            osc.stop(now + idx * 0.055 + 1.0);
+          });
+        } catch (e) {
+          // Ignore audio restrictions before gesture
+        }
+      }
+
+      // ==========================================
+      // 3. THREE.JS SCENE, CAMERA & SOFT LIGHTING
+      // ==========================================
+      const container = document.getElementById('canvas-container');
+      const scene = new THREE.Scene();
+      scene.fog = new THREE.FogExp2(0xe9d6e3, 0.011);
+
+      const camera = new THREE.PerspectiveCamera(36, window.innerWidth / window.innerHeight, 0.1, 200);
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.08;
+      container.appendChild(renderer.domElement);
+
+      const hemiLight = new THREE.HemisphereLight(0xfff6f4, 0xc9c0e2, 0.94);
+      hemiLight.position.set(0, 28, 0);
+      scene.add(hemiLight);
+
+      const keyLight = new THREE.DirectionalLight(0xfff2e8, 0.90);
+      keyLight.position.set(11, 22, 15);
+      keyLight.castShadow = true;
+      keyLight.shadow.mapSize.width = 1024;
+      keyLight.shadow.mapSize.height = 1024;
+      keyLight.shadow.bias = -0.0006;
+      scene.add(keyLight);
+
+      const rimLight = new THREE.DirectionalLight(0xffb8c6, 0.68);
+      rimLight.position.set(-14, 14, -11);
+      scene.add(rimLight);
+
+      const fillLight = new THREE.PointLight(0xe2e8ff, 0.48, 55);
+      fillLight.position.set(0, -7, 15);
+      scene.add(fillLight);
+
+      const bouquetRoot = new THREE.Group();
+      scene.add(bouquetRoot);
+
+      const rosesGroup = new THREE.Group();
+      const foliageGroup = new THREE.Group();
+      const wrapGroup = new THREE.Group();
+      bouquetRoot.add(rosesGroup);
+      bouquetRoot.add(foliageGroup);
+      bouquetRoot.add(wrapGroup);
+
+      let flowerNodes = [];
+      let bloomPetals = [];
+
+      // ==========================================
+      // 4. ORBIT & PAN CAMERA CONTROLLER
+      // ==========================================
+      const camSpherical = {
+        radius: 19.2,
+        theta: 0.18,
+        phi: 1.08,
+        target: new THREE.Vector3(0, 0.85, 0)
+      };
+      const camTargetSpherical = {
+        radius: 19.2,
+        theta: 0.18,
+        phi: 1.08,
+        target: new THREE.Vector3(0, 0.85, 0)
+      };
+
+      let isDragging = false;
+      let isRightDrag = false;
+      let prevPointer = { x: 0, y: 0 };
+      let pointerDownPos = { x: 0, y: 0 };
+      let pinchStartDist = 0;
+
+      function updateCameraPosition() {
+        camSpherical.radius += (camTargetSpherical.radius - camSpherical.radius) * 0.1;
+        camSpherical.theta += (camTargetSpherical.theta - camSpherical.theta) * 0.1;
+        camSpherical.phi += (camTargetSpherical.phi - camSpherical.phi) * 0.1;
+        camSpherical.target.lerp(camTargetSpherical.target, 0.1);
+
+        const sinPhi = Math.sin(camSpherical.phi);
+        camera.position.x = camSpherical.target.x + camSpherical.radius * sinPhi * Math.sin(camSpherical.theta);
+        camera.position.y = camSpherical.target.y + camSpherical.radius * Math.cos(camSpherical.phi);
+        camera.position.z = camSpherical.target.z + camSpherical.radius * sinPhi * Math.cos(camSpherical.theta);
+        camera.lookAt(camSpherical.target);
+      }
+
+      // ==========================================
+      // 5. SCULPTED SPIRAL LOW-POLY ROSE & SERRATED LEAF GEOMETRY
+      // ==========================================
+      function addFacetLines(mesh, lineColorHex, opacityVal) {
+        if (state.wireframeMode !== 0) return;
+        const edgesGeo = new THREE.EdgesGeometry(mesh.geometry, 7);
+        const lineMat = new THREE.LineBasicMaterial({
+          color: lineColorHex,
+          transparent: true,
+          opacity: opacityVal
+        });
+        const lines = new THREE.LineSegments(edgesGeo, lineMat);
+        mesh.add(lines);
+      }
+
+      /**
+       * Creates a cohesive, self-grounded low-poly rose petal shell that originates cleanly
+       * from the central stem receptacle (0, 0, 0), cups outward in a polygonal bowl, and
+       * folds over at the upper rim in a 3-peak angular ridge.
+       */
+      function createSculptedSpiralPetal(cfg, palette, warmSideFactor) {
+        const cols = 4;
+        const rows = 4;
+        const grid = [];
+
+        for (let r = 0; r <= rows; r++) {
+          const rowPts = [];
+          const v = r / rows;
+
+          for (let c = 0; c <= cols; c++) {
+            const u = (c / cols) - 0.5;
+            const spiralTwist = (r >= 2) ? (u * 0.12) : 0;
+            const angle = u * cfg.arcSpan + spiralTwist;
+
+            let rad, y;
+            if (r === 0) {
+              rad = cfg.rBase * (1 - Math.abs(u) * 0.25);
+              y = 0.0;
+            } else if (r === 1) {
+              rad = cfg.rCup * (1 - Math.abs(u) * 0.14);
+              y = cfg.height * 0.24;
+            } else if (r === 2) {
+              rad = cfg.rBelly * (1 - Math.abs(u) * 0.10);
+              y = cfg.height * 0.56;
+            } else if (r === 3) {
+              rad = cfg.rShoulder * (1 - Math.abs(u) * 0.08);
+              y = cfg.height * 0.86;
+            } else {
+              const isCenter = (c === 2);
+              const isMid = (c === 1 || c === 3);
+              const foldOut = isCenter ? cfg.lipFold * 1.18 : (isMid ? cfg.lipFold * 0.92 : cfg.lipFold * 0.28);
+              rad = cfg.rShoulder + foldOut;
+              const peakH = isCenter ? 1.06 : (isMid ? 0.99 : 0.84);
+              y = cfg.height * peakH - cfg.reflexDrop * (isCenter ? 0.6 : 0.25);
+            }
+
+            const x = Math.sin(angle) * rad;
+            const z = Math.cos(angle) * rad;
+            rowPts.push(new THREE.Vector3(x, y, z));
+          }
+          grid.push(rowPts);
+        }
+
+        const positions = [];
+        const colors = [];
+
+        const cVortex = new THREE.Color(palette.vortexDeep);
+        const cVelvet = new THREE.Color(palette.coreVelvet);
+        const cRuby   = new THREE.Color(palette.innerRuby);
+        const cCrim   = new THREE.Color(palette.midCrimson);
+        const cScar   = new THREE.Color(palette.outerScarlet);
+        const cCoral  = new THREE.Color(palette.coralFold);
+        const cSalmon = new THREE.Color(palette.salmonHighlight);
+
+        const tNorm = cfg.tierNorm;
+
+        function computeFacetColor(rIdx, cIdx, triHalf) {
+          const vNorm = (rIdx + (triHalf ? 0.65 : 0.35)) / rows;
+          const col = new THREE.Color();
+
+          if (tNorm < 0.22) {
+            col.copy(cVortex).lerp(cVelvet, vNorm * 0.85);
+            if (vNorm > 0.65) col.lerp(cRuby, (vNorm - 0.65) * 2.2);
+            if (vNorm > 0.82) col.lerp(cCoral, (vNorm - 0.82) * 2.6 * warmSideFactor);
+          } else if (tNorm < 0.55) {
+            col.copy(cVelvet).lerp(cRuby, Math.min(1, vNorm * 1.3));
+            if (vNorm > 0.45) col.lerp(cCrim, (vNorm - 0.45) * 1.5);
+            if (vNorm > 0.72) col.lerp(cCoral, (vNorm - 0.72) * 2.4 * warmSideFactor);
+            if (vNorm > 0.86) col.lerp(cSalmon, (vNorm - 0.86) * 2.8 * warmSideFactor);
+          } else {
+            col.copy(cRuby).lerp(cCrim, Math.min(1, vNorm * 1.25));
+            if (vNorm > 0.38) col.lerp(cScar, (vNorm - 0.38) * 1.35);
+            if (vNorm > 0.65) col.lerp(cCoral, (vNorm - 0.65) * 2.1 * warmSideFactor);
+            if (vNorm > 0.82) col.lerp(cSalmon, (vNorm - 0.82) * 2.5 * warmSideFactor);
+          }
+
+          const jitter = (((rIdx * 7 + cIdx * 5 + (triHalf ? 3 : 0)) % 5) - 2) * 0.022;
+          col.offsetHSL(0, 0, jitter);
+          return col;
+        }
+
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const p00 = grid[r][c];
+            const p10 = grid[r][c + 1];
+            const p01 = grid[r + 1][c];
+            const p11 = grid[r + 1][c + 1];
+
+            const col1 = computeFacetColor(r, c, false);
+            const col2 = computeFacetColor(r, c, true);
+
+            if (c < 2) {
+              positions.push(p00.x, p00.y, p00.z, p10.x, p10.y, p10.z, p11.x, p11.y, p11.z);
+              colors.push(col1.r, col1.g, col1.b, col1.r, col1.g, col1.b, col1.r, col1.g, col1.b);
+
+              positions.push(p00.x, p00.y, p00.z, p11.x, p11.y, p11.z, p01.x, p01.y, p01.z);
+              colors.push(col2.r, col2.g, col2.b, col2.r, col2.g, col2.b, col2.r, col2.g, col2.b);
+            } else {
+              positions.push(p00.x, p00.y, p00.z, p10.x, p10.y, p10.z, p01.x, p01.y, p01.z);
+              colors.push(col1.r, col1.g, col1.b, col1.r, col1.g, col1.b, col1.r, col1.g, col1.b);
+
+              positions.push(p10.x, p10.y, p10.z, p11.x, p11.y, p11.z, p01.x, p01.y, p01.z);
+              colors.push(col2.r, col2.g, col2.b, col2.r, col2.g, col2.b, col2.r, col2.g, col2.b);
+            }
+          }
+        }
+
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+        geo.computeVertexNormals();
+        return geo;
+      }
+
+      function buildSculptedLowPolyRose(palette, scale = 1.0, opennessBias = 1.0) {
+        const roseGroup = new THREE.Group();
+
+        const sharedPetalMat = new THREE.MeshStandardMaterial({
+          vertexColors: true,
+          flatShading: true,
+          roughness: 0.44,
+          metalness: 0.03,
+          side: THREE.DoubleSide,
+          wireframe: state.wireframeMode === 2
+        });
+
+        const coreGeo = new THREE.ConeGeometry(0.14, 0.62, 5, 1);
+        coreGeo.translate(0, 0.32, 0);
+        const coreMat = new THREE.MeshStandardMaterial({
+          color: palette.vortexDeep,
+          flatShading: true,
+          roughness: 0.55,
+          wireframe: state.wireframeMode === 2
+        });
+        const coreMesh = new THREE.Mesh(coreGeo, coreMat);
+        roseGroup.add(coreMesh);
+
+        const whorls = [
+          { count: 3, arcSpan: 2.30, rBase: 0.05, rCup: 0.11, rBelly: 0.15, rShoulder: 0.12, height: 0.64, lipFold: 0.04, reflexDrop: 0.00, baseTilt: 0.02, yOffset: 0.08 },
+          { count: 4, arcSpan: 2.15, rBase: 0.08, rCup: 0.18, rBelly: 0.24, rShoulder: 0.22, height: 0.68, lipFold: 0.07, reflexDrop: 0.01, baseTilt: 0.05, yOffset: 0.06 },
+          { count: 5, arcSpan: 1.98, rBase: 0.11, rCup: 0.26, rBelly: 0.35, rShoulder: 0.34, height: 0.72, lipFold: 0.11, reflexDrop: 0.02, baseTilt: 0.09, yOffset: 0.04 },
+          { count: 5, arcSpan: 1.86, rBase: 0.14, rCup: 0.35, rBelly: 0.47, rShoulder: 0.48, height: 0.75, lipFold: 0.15, reflexDrop: 0.03, baseTilt: 0.14, yOffset: 0.02 },
+          { count: 6, arcSpan: 1.74, rBase: 0.17, rCup: 0.45, rBelly: 0.60, rShoulder: 0.63, height: 0.77, lipFold: 0.20, reflexDrop: 0.05, baseTilt: 0.20, yOffset: 0.00 },
+          { count: 6, arcSpan: 1.66, rBase: 0.20, rCup: 0.55, rBelly: 0.73, rShoulder: 0.78, height: 0.78, lipFold: 0.25, reflexDrop: 0.07, baseTilt: 0.26, yOffset: -0.02 },
+          { count: 7, arcSpan: 1.58, rBase: 0.23, rCup: 0.65, rBelly: 0.86, rShoulder: 0.94, height: 0.76, lipFold: 0.30, reflexDrop: 0.10, baseTilt: 0.33, yOffset: -0.04 }
+        ];
+
+        const goldenAngle = 2.3999632;
+
+        whorls.forEach((w, wIdx) => {
+          const tierNorm = wIdx / (whorls.length - 1);
+
+          for (let i = 0; i < w.count; i++) {
+            const angle = (i / w.count) * Math.PI * 2 + wIdx * goldenAngle;
+            const warmSideFactor = 0.50 + 0.50 * (0.5 + 0.5 * Math.cos(angle - 0.65));
+
+            const petalGeo = createSculptedSpiralPetal(
+              {
+                arcSpan: w.arcSpan,
+                rBase: w.rBase,
+                rCup: w.rCup,
+                rBelly: w.rBelly,
+                rShoulder: w.rShoulder,
+                height: w.height,
+                lipFold: w.lipFold,
+                reflexDrop: w.reflexDrop,
+                tierNorm: tierNorm
+              },
+              palette,
+              warmSideFactor
+            );
+
+            const pivot = new THREE.Group();
+            pivot.rotation.y = angle;
+            pivot.position.y = w.yOffset;
+
+            const holder = new THREE.Group();
+            const bTilt = w.baseTilt * opennessBias;
+            holder.rotation.x = bTilt;
+
+            const mesh = new THREE.Mesh(petalGeo, sharedPetalMat);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            addFacetLines(mesh, palette.edgeLine, 0.14);
+
+            holder.add(mesh);
+            pivot.add(holder);
+            roseGroup.add(pivot);
+
+            bloomPetals.push({
+              holder: holder,
+              baseTilt: bTilt,
+              tierNorm: tierNorm
+            });
+          }
+        });
+
+        const receptacleGeo = new THREE.ConeGeometry(0.26, 0.38, 7);
+        receptacleGeo.rotateX(Math.PI);
+        receptacleGeo.translate(0, -0.16, 0);
+        const calyxMat = new THREE.MeshStandardMaterial({
+          color: 0x3b6e52,
+          flatShading: true,
+          roughness: 0.52,
+          side: THREE.DoubleSide,
+          wireframe: state.wireframeMode === 2
+        });
+        const receptacle = new THREE.Mesh(receptacleGeo, calyxMat);
+        addFacetLines(receptacle, 0x193827, 0.16);
+        roseGroup.add(receptacle);
+
+        for (let s = 0; s < 5; s++) {
+          const sepalGeo = new THREE.ConeGeometry(0.13, 0.78, 4);
+          sepalGeo.translate(0, 0.38, 0);
+          const sepalMesh = new THREE.Mesh(sepalGeo, calyxMat);
+          const sAngle = (s / 5) * Math.PI * 2 + 0.25;
+          sepalMesh.rotation.y = sAngle;
+          sepalMesh.rotation.x = 1.72 + (s % 2) * 0.14;
+          sepalMesh.position.y = -0.04;
+          addFacetLines(sepalMesh, 0x193827, 0.16);
+          roseGroup.add(sepalMesh);
+        }
+
+        roseGroup.scale.setScalar(scale);
+        return roseGroup;
+      }
+
+      function buildSerratedRoseLeaf(scale = 1.0, variant = 0) {
+        const positions = [];
+        const colors = [];
+
+        const spineY = [0.0, 0.24, 0.50, 0.76, 1.00, 1.20];
+        const spineZ = [0.0, 0.04, 0.07, 0.05, -0.01, -0.08];
+        const halfW  = [0.04, 0.27, 0.37, 0.31, 0.17, 0.0];
+
+        const cDark  = variant % 2 === 0 ? new THREE.Color('#1a4a38') : new THREE.Color('#3b5436');
+        const cMid   = variant % 2 === 0 ? new THREE.Color('#2c6b52') : new THREE.Color('#53704b');
+        const cLight = variant % 2 === 0 ? new THREE.Color('#549e80') : new THREE.Color('#75946b');
+        const cTip   = variant % 2 === 0 ? new THREE.Color('#7bc2a5') : new THREE.Color('#95b289');
+
+        for (let i = 0; i < spineY.length - 1; i++) {
+          const t0 = i / (spineY.length - 1);
+          const t1 = (i + 1) / (spineY.length - 1);
+
+          const c0 = new THREE.Vector3(0, spineY[i], spineZ[i]);
+          const c1 = new THREE.Vector3(0, spineY[i + 1], spineZ[i + 1]);
+
+          const serrationOut = (i < spineY.length - 2) ? 1.15 : 1.0;
+          const l0 = new THREE.Vector3(-halfW[i], spineY[i] - 0.02, spineZ[i] - 0.04);
+          const lPeak = new THREE.Vector3(-halfW[i + 1] * serrationOut, spineY[i + 1] - 0.02, spineZ[i + 1] - 0.06);
+
+          const r0 = new THREE.Vector3(halfW[i], spineY[i] - 0.02, spineZ[i] - 0.04);
+          const rPeak = new THREE.Vector3(halfW[i + 1] * serrationOut, spineY[i + 1] - 0.02, spineZ[i + 1] - 0.06);
+
+          const colL1 = cMid.clone().lerp(cLight, t0);
+          const colL2 = cLight.clone().lerp(cTip, t1);
+
+          positions.push(c0.x, c0.y, c0.z, c1.x, c1.y, c1.z, lPeak.x, lPeak.y, lPeak.z);
+          colors.push(colL2.r, colL2.g, colL2.b, colL2.r, colL2.g, colL2.b, colL2.r, colL2.g, colL2.b);
+
+          if (i > 0) {
+            positions.push(c0.x, c0.y, c0.z, lPeak.x, lPeak.y, lPeak.z, l0.x, l0.y, l0.z);
+            colors.push(colL1.r, colL1.g, colL1.b, colL1.r, colL1.g, colL1.b, colL1.r, colL1.g, colL1.b);
+          }
+
+          const colR1 = cDark.clone().lerp(cMid, t0 * 0.85);
+          const colR2 = cDark.clone().lerp(cMid, t1);
+
+          positions.push(c0.x, c0.y, c0.z, rPeak.x, rPeak.y, rPeak.z, c1.x, c1.y, c1.z);
+          colors.push(colR2.r, colR2.g, colR2.b, colR2.r, colR2.g, colR2.b, colR2.r, colR2.g, colR2.b);
+
+          if (i > 0) {
+            positions.push(c0.x, c0.y, c0.z, r0.x, r0.y, r0.z, rPeak.x, rPeak.y, rPeak.z);
+            colors.push(colR1.r, colR1.g, colR1.b, colR1.r, colR1.g, colR1.b, colR1.r, colR1.g, colR1.b);
+          }
+        }
+
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+        geo.computeVertexNormals();
+
+        const mat = new THREE.MeshStandardMaterial({
+          vertexColors: true,
+          flatShading: true,
+          roughness: 0.46,
+          metalness: 0.04,
+          side: THREE.DoubleSide,
+          wireframe: state.wireframeMode === 2
+        });
+
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.scale.setScalar(scale);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        addFacetLines(mesh, 0x143325, 0.15);
+        return mesh;
+      }
+
+      function buildRoseFoliageTrio(scale = 1.0, variant = 0) {
+        const trio = new THREE.Group();
+
+        const centerLeaf = buildSerratedRoseLeaf(1.02, variant);
+        trio.add(centerLeaf);
+
+        const leftLeaf = buildSerratedRoseLeaf(0.78, variant + 1);
+        leftLeaf.position.set(-0.14, 0.10, 0);
+        leftLeaf.rotation.z = 0.62;
+        leftLeaf.rotation.y = 0.20;
+        trio.add(leftLeaf);
+
+        const rightLeaf = buildSerratedRoseLeaf(0.78, variant);
+        rightLeaf.position.set(0.14, 0.10, 0);
+        rightLeaf.rotation.z = -0.62;
+        rightLeaf.rotation.y = -0.20;
+        trio.add(rightLeaf);
+
+        trio.scale.setScalar(scale);
+        return trio;
+      }
+
+      // ==========================================
+      // 6. PROPER CONTINUOUS FLORIST WRAP, RIBBON & VASE
+      // ==========================================
+      function createContinuousPleatedCone(rTop, rWaist, height, radialSegs, heightSegs, pleatAmp, pleatFreq, backCrownLift, phaseOffset) {
+        const geo = new THREE.CylinderGeometry(rTop, rWaist, height, radialSegs, heightSegs, true);
+        const pos = geo.attributes.position;
+
+        for (let i = 0; i < pos.count; i++) {
+          const x = pos.getX(i);
+          const y = pos.getY(i);
+          const z = pos.getZ(i);
+          // Clamp vNorm to [0, 1] so floating-point precision never passes a negative value to Math.pow()
+          const vNorm = Math.max(0, Math.min(1, (y + height * 0.5) / height));
+          const theta = Math.atan2(z, x);
+
+          const pleat = Math.sin(theta * pleatFreq + phaseOffset) * pleatAmp * Math.pow(vNorm, 1.3);
+          const radScale = 1 + (pleat / Math.max(0.5, rTop));
+
+          const crown = (-Math.sin(theta) * 0.5 + 0.5) * backCrownLift * Math.pow(vNorm, 1.4);
+
+          pos.setX(i, x * radScale);
+          pos.setZ(i, z * radScale);
+          pos.setY(i, y + crown + pleat * 0.45);
+        }
+
+        geo.computeVertexNormals();
+        return geo;
+      }
+
+      function buildSoftBouquetWrap() {
+        while (wrapGroup.children.length > 0) {
+          wrapGroup.remove(wrapGroup.children[0]);
+        }
+
+        const waistY = -4.25;
+
+        if (state.wrapStyle === 'silk' || state.wrapStyle === 'kraft') {
+          const isSilk = state.wrapStyle === 'silk';
+
+          const innerCollarGeo = createContinuousPleatedCone(
+            4.15,
+            0.78,
+            5.2,
+            32,
+            4,
+            0.22,
+            9,
+            0.45,
+            0.0
+          );
+          const innerMat = new THREE.MeshStandardMaterial({
+            color: 0xfff7f9,
+            flatShading: true,
+            roughness: 0.32,
+            metalness: 0.02,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: isSilk ? 0.65 : 0.85,
+            wireframe: state.wireframeMode === 2
+          });
+          const innerCollar = new THREE.Mesh(innerCollarGeo, innerMat);
+          innerCollar.position.y = -1.65;
+          wrapGroup.add(innerCollar);
+
+          const outerCollarGeo = createContinuousPleatedCone(
+            4.42,
+            0.82,
+            5.45,
+            24,
+            4,
+            0.26,
+            6,
+            0.85,
+            1.2
+          );
+          const outerColor = isSilk ? 0xfce0e8 : 0xf2d3c9;
+          const outerMat = new THREE.MeshStandardMaterial({
+            color: outerColor,
+            flatShading: true,
+            roughness: isSilk ? 0.36 : 0.58,
+            metalness: 0.04,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: isSilk ? 0.84 : 0.96,
+            wireframe: state.wireframeMode === 2
+          });
+          const outerCollar = new THREE.Mesh(outerCollarGeo, outerMat);
+          outerCollar.position.y = -1.55;
+          outerCollar.castShadow = true;
+          outerCollar.receiveShadow = true;
+          addFacetLines(outerCollar, isSilk ? 0xd99aab : 0xc49b8e, 0.14);
+          wrapGroup.add(outerCollar);
+
+          const skirtGeo = createContinuousPleatedCone(
+            1.68,
+            0.80,
+            2.45,
+            20,
+            3,
+            0.14,
+            7,
+            0.0,
+            0.5
+          );
+          skirtGeo.rotateX(Math.PI);
+          const skirtMesh = new THREE.Mesh(skirtGeo, outerMat);
+          skirtMesh.position.y = waistY - 1.22;
+          addFacetLines(skirtMesh, isSilk ? 0xd99aab : 0xc49b8e, 0.14);
+          wrapGroup.add(skirtMesh);
+
+          const ribbonMat = new THREE.MeshStandardMaterial({
+            color: 0xc4162a,
+            flatShading: true,
+            roughness: 0.28,
+            metalness: 0.14,
+            side: THREE.DoubleSide,
+            wireframe: state.wireframeMode === 2
+          });
+
+          const bandGeo = new THREE.CylinderGeometry(0.86, 0.86, 0.42, 14, 1);
+          const bandMesh = new THREE.Mesh(bandGeo, ribbonMat);
+          bandMesh.position.y = waistY;
+          addFacetLines(bandMesh, 0x590611, 0.2);
+          wrapGroup.add(bandMesh);
+
+          const loopGeo = new THREE.OctahedronGeometry(0.54, 1);
+          loopGeo.scale(1.3, 0.62, 0.42);
+
+          const leftLoop = new THREE.Mesh(loopGeo, ribbonMat);
+          leftLoop.position.set(-0.62, waistY + 0.04, 0.86);
+          leftLoop.rotation.z = 0.22;
+          leftLoop.rotation.y = 0.25;
+          addFacetLines(leftLoop, 0x590611, 0.2);
+          wrapGroup.add(leftLoop);
+
+          const rightLoop = new THREE.Mesh(loopGeo, ribbonMat);
+          rightLoop.position.set(0.62, waistY + 0.04, 0.86);
+          rightLoop.rotation.z = -0.22;
+          rightLoop.rotation.y = -0.25;
+          addFacetLines(rightLoop, 0x590611, 0.2);
+          wrapGroup.add(rightLoop);
+
+          const knotGeo = new THREE.DodecahedronGeometry(0.24, 0);
+          const knot = new THREE.Mesh(knotGeo, ribbonMat);
+          knot.position.set(0, waistY + 0.04, 0.94);
+          wrapGroup.add(knot);
+
+          [-1, 1].forEach((dir) => {
+            const tailCurve = new THREE.CatmullRomCurve3([
+              new THREE.Vector3(dir * 0.14, waistY - 0.05, 0.92),
+              new THREE.Vector3(dir * 0.42, waistY - 0.85, 1.12),
+              new THREE.Vector3(dir * 0.64, waistY - 1.75, 1.18),
+              new THREE.Vector3(dir * 0.78, waistY - 2.45, 1.08)
+            ]);
+            const tailGeo = new THREE.TubeGeometry(tailCurve, 7, 0.11, 4, false);
+            tailGeo.scale(1.4, 1.0, 0.35);
+            const tailMesh = new THREE.Mesh(tailGeo, ribbonMat);
+            addFacetLines(tailMesh, 0x590611, 0.18);
+            wrapGroup.add(tailMesh);
+          });
+
+        } else if (state.wrapStyle === 'vase') {
+          const vaseGeo = new THREE.CylinderGeometry(2.35, 1.55, 5.6, 12, 4);
+          const pos = vaseGeo.attributes.position;
+          for (let i = 0; i < pos.count; i++) {
+            const y = pos.getY(i);
+            if (y > 0.2 && y < 1.8) {
+              pos.setX(i, pos.getX(i) * 0.74);
+              pos.setZ(i, pos.getZ(i) * 0.74);
+            } else if (y <= 0.2 && y > -2.0) {
+              pos.setX(i, pos.getX(i) * 1.18);
+              pos.setZ(i, pos.getZ(i) * 1.18);
+            }
+          }
+          vaseGeo.computeVertexNormals();
+          const vaseMat = new THREE.MeshStandardMaterial({
+            color: 0xffe8ef,
+            flatShading: true,
+            roughness: 0.15,
+            metalness: 0.18,
+            transparent: true,
+            opacity: 0.72,
+            wireframe: state.wireframeMode === 2
+          });
+          const vase = new THREE.Mesh(vaseGeo, vaseMat);
+          vase.position.y = -3.85;
+          addFacetLines(vase, 0xd496a7, 0.22);
+          wrapGroup.add(vase);
+
+          const ringGeo = new THREE.TorusGeometry(1.74, 0.08, 6, 12);
+          ringGeo.rotateX(Math.PI / 2);
+          const ringMat = new THREE.MeshStandardMaterial({
+            color: 0xe6a195,
+            flatShading: true,
+            roughness: 0.25,
+            metalness: 0.65
+          });
+          const ring = new THREE.Mesh(ringGeo, ringMat);
+          ring.position.y = -2.75;
+          wrapGroup.add(ring);
+        }
+      }
+
+      // ==========================================
+      // 7. SPHERE-PACKED CONCENTRIC FLORIST DOME OF 29 ROSES
+      // ==========================================
+      function rebuildRoseBouquet() {
+        currentSeed = state.seed;
+        flowerNodes = [];
+        bloomPetals = [];
+
+        while (rosesGroup.children.length > 0) {
+          rosesGroup.remove(rosesGroup.children[0]);
+        }
+        while (foliageGroup.children.length > 0) {
+          foliageGroup.remove(foliageGroup.children[0]);
+        }
+
+        const palette = ROSE_PALETTES[state.rosePalette] || ROSE_PALETTES.classic;
+        const upVec = new THREE.Vector3(0, 1, 0);
+        const domeFocus = new THREE.Vector3(0, -1.65, 0);
+        const waistPoint = new THREE.Vector3(0, -4.25, 0);
+
+        const stemMat = new THREE.MeshStandardMaterial({
+          color: 0x38573a,
+          flatShading: true,
+          roughness: 0.58,
+          wireframe: state.wireframeMode === 2
+        });
+
+        const cushionGeo = new THREE.SphereGeometry(2.85, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.55);
+        cushionGeo.scale(1.12, 0.72, 1.12);
+        const cushionMat = new THREE.MeshStandardMaterial({
+          color: 0x244735,
+          flatShading: true,
+          roughness: 0.75,
+          wireframe: state.wireframeMode === 2
+        });
+        const cushion = new THREE.Mesh(cushionGeo, cushionMat);
+        cushion.position.y = 0.35;
+        foliageGroup.add(cushion);
+
+        const rings = [
+          { count: 1,  radius: 0.00, y: 3.12, scale: 1.18, openness: 1.02, phaseOffset: 0.0 },
+          { count: 6,  radius: 1.26, y: 2.78, scale: 1.12, openness: 1.00, phaseOffset: 0.2 },
+          { count: 10, radius: 2.38, y: 2.08, scale: 1.08, openness: 0.96, phaseOffset: 0.52 },
+          { count: 12, radius: 3.32, y: 1.08, scale: 1.04, openness: 0.92, phaseOffset: 0.15 }
+        ];
+
+        const roseTitles = [
+          {
+            title: 'Velvet Crimson & Coral Rose',
+            badge: 'Centerpiece Rose',
+            desc: '7-whorl spiral polygonal petals grading from a deep burgundy heart to coral-red folded lips.'
+          },
+          {
+            title: 'Scarlet Origami Rose',
+            badge: 'Sculpted Bloom',
+            desc: 'Cupped geometric rose head with crisp triangular facets and pointed sage-green sepals.'
+          },
+          {
+            title: 'Blush-Tipped Ruby Rose',
+            badge: 'Romantic Rose',
+            desc: 'Multi-whorl low-poly rose with warm salmon-red sunlit ridges and velvety inner shadows.'
+          }
+        ];
+
+        let globalIdx = 0;
+
+        rings.forEach((ring, rIdx) => {
+          for (let i = 0; i < ring.count; i++) {
+            const baseAngle = (i / ring.count) * Math.PI * 2 + ring.phaseOffset + (seededRandom() - 0.5) * 0.08;
+            const rJitter = ring.radius > 0 ? (seededRandom() - 0.5) * 0.10 : 0;
+            const yJitter = (seededRandom() - 0.5) * 0.08;
+
+            const r = ring.radius + rJitter;
+            const pos = new THREE.Vector3(
+              Math.cos(baseAngle) * r,
+              ring.y + yJitter,
+              Math.sin(baseAngle) * r
+            );
+
+            const scaleJitter = ring.scale + (seededRandom() - 0.5) * 0.05;
+            const roseHead = buildSculptedLowPolyRose(palette, scaleJitter, ring.openness);
+
+            const anchor = new THREE.Group();
+            anchor.position.copy(pos);
+
+            const outwardDir = pos.clone().sub(domeFocus).normalize();
+            const quat = new THREE.Quaternion().setFromUnitVectors(upVec, outwardDir);
+            anchor.quaternion.copy(quat);
+            anchor.rotateY(globalIdx * 1.35 + seededRandom() * 0.4);
+
+            anchor.add(roseHead);
+            rosesGroup.add(anchor);
+
+            const stemBottom = new THREE.Vector3(
+              -pos.x * 0.24 + (seededRandom() - 0.5) * 0.12,
+              -6.95 + (rIdx * 0.06),
+              -pos.z * 0.24 + (seededRandom() - 0.5) * 0.12
+            );
+            const stemCurve = new THREE.CatmullRomCurve3([
+              pos.clone().add(new THREE.Vector3(0, -0.15, 0)),
+              waistPoint.clone().add(new THREE.Vector3(pos.x * 0.11, 0, pos.z * 0.11)),
+              stemBottom
+            ]);
+            const stemGeo = new THREE.TubeGeometry(stemCurve, 6, 0.055, 5, false);
+            const stemMesh = new THREE.Mesh(stemGeo, stemMat);
+            foliageGroup.add(stemMesh);
+
+            roseHead.traverse((child) => {
+              if (child.isMesh) {
+                child.userData.flowerNodeIndex = flowerNodes.length;
+              }
+            });
+
+            const info = roseTitles[globalIdx % roseTitles.length];
+            flowerNodes.push({
+              anchor: anchor,
+              head: roseHead,
+              phase: seededRandom() * Math.PI * 2,
+              pulse: 0,
+              meta: {
+                title: info.title,
+                badge: rIdx === 0 ? 'Crown Centerpiece' : info.badge,
+                desc: info.desc,
+                color: palette.coralFold,
+                chimeFreq: 493.88 + (globalIdx % 6) * 45
+              }
+            });
+
+            globalIdx++;
+          }
+        });
+
+        const outerLeafCount = 16;
+        for (let i = 0; i < outerLeafCount; i++) {
+          const angle = (i / outerLeafCount) * Math.PI * 2 + 0.12;
+          const radius = 3.38 + (i % 2) * 0.18;
+          const trio = buildRoseFoliageTrio(1.06 + (i % 2) * 0.10, i);
+          trio.position.set(
+            Math.cos(angle) * radius,
+            0.62 + (i % 2) * 0.18,
+            Math.sin(angle) * radius
+          );
+          trio.rotation.y = -angle + Math.PI / 2;
+          trio.rotation.x = 1.08 + (i % 2) * 0.12;
+          foliageGroup.add(trio);
+        }
+
+        for (let j = 0; j < 12; j++) {
+          const angle = ((j + 0.5) / 12) * Math.PI * 2;
+          const r = 2.86;
+          const y = 1.48;
+          const leaf = buildSerratedRoseLeaf(0.84, j);
+          leaf.position.set(Math.cos(angle) * r, y, Math.sin(angle) * r);
+          leaf.rotation.y = -angle + Math.PI / 2;
+          leaf.rotation.x = 0.82;
+          foliageGroup.add(leaf);
+        }
+
+        const pearlGeo = new THREE.OctahedronGeometry(0.085, 0);
+        const pearlMat = new THREE.MeshStandardMaterial({
+          color: 0xfff8fa,
+          flatShading: true,
+          roughness: 0.25,
+          metalness: 0.1
+        });
+        for (let p = 0; p < 18; p++) {
+          const ringChoice = p < 6 ? 1.82 : 2.88;
+          const ang = (p / (p < 6 ? 6 : 12)) * Math.PI * 2 + 0.35;
+          const py = p < 6 ? 2.52 : 1.65;
+          const pearl = new THREE.Mesh(pearlGeo, pearlMat);
+          pearl.position.set(Math.cos(ang) * ringChoice, py, Math.sin(ang) * ringChoice);
+          foliageGroup.add(pearl);
+        }
+
+        buildSoftBouquetWrap();
+        applyBloomOpenness();
+      }
+
+      function applyBloomOpenness() {
+        const factor = state.bloomFactor;
+        for (let i = 0; i < bloomPetals.length; i++) {
+          const bp = bloomPetals[i];
+          const unfurl = 0.65 + (factor - 0.5) * (0.45 + bp.tierNorm * 0.55);
+          bp.holder.rotation.x = bp.baseTilt * unfurl;
+        }
+      }
+
+      // ==========================================
+      // 8. FLOATING LOW-POLY ROSE PETALS
+      // ==========================================
+      const floatingPetalsGroup = new THREE.Group();
+      scene.add(floatingPetalsGroup);
+      const floatingItems = [];
+
+      function initFloatingRosePetals() {
+        const palette = ROSE_PALETTES.classic;
+        const miniGeo = createSculptedSpiralPetal(
+          {
+            arcSpan: 1.35,
+            rBase: 0.04,
+            rCup: 0.12,
+            rBelly: 0.18,
+            rShoulder: 0.20,
+            height: 0.34,
+            lipFold: 0.06,
+            reflexDrop: 0.02,
+            tierNorm: 0.7
+          },
+          palette,
+          0.9
+        );
+        const mat = new THREE.MeshStandardMaterial({
+          vertexColors: true,
+          flatShading: true,
+          roughness: 0.44,
+          side: THREE.DoubleSide
+        });
+
+        for (let i = 0; i < 36; i++) {
+          const mesh = new THREE.Mesh(miniGeo, mat);
+          const radius = 3.8 + Math.random() * 7.2;
+          const angle = Math.random() * Math.PI * 2;
+          const y = (Math.random() - 0.4) * 13;
+          mesh.position.set(Math.cos(angle) * radius, y, Math.sin(angle) * radius);
+          mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+          floatingPetalsGroup.add(mesh);
+
+          floatingItems.push({
+            mesh: mesh,
+            radius: radius,
+            angle: angle,
+            y: y,
+            speedY: 0.008 + Math.random() * 0.012,
+            speedAngle: 0.002 + Math.random() * 0.0035,
+            rotSpeed: new THREE.Vector3(
+              (Math.random() - 0.5) * 0.02,
+              (Math.random() - 0.5) * 0.02,
+              (Math.random() - 0.5) * 0.02
+            )
+          });
+        }
+      }
+
+      // ==========================================
+      // 9. ATMOSPHERE & LIGHTING CONTROLLER
+      // ==========================================
+      function applyMood(moodKey) {
+        const m = MOODS[moodKey] || MOODS.pastel;
+        state.mood = moodKey;
+        document.body.style.background = m.bgCss;
+        scene.fog.color.setHex(m.fogColor);
+
+        hemiLight.color.setHex(m.hemiSky);
+        hemiLight.groundColor.setHex(m.hemiGround);
+        hemiLight.intensity = m.hemiIntensity;
+
+        keyLight.color.setHex(m.keyColor);
+        keyLight.intensity = m.keyIntensity;
+
+        rimLight.color.setHex(m.rimColor);
+        rimLight.intensity = m.rimIntensity;
+
+        fillLight.color.setHex(m.fillColor);
+        fillLight.intensity = m.fillIntensity;
+
+        const moodNameEl = document.getElementById('mood-name');
+        if (moodNameEl) moodNameEl.textContent = m.name;
+
+        document.querySelectorAll('.mood-btn').forEach((btn) => {
+          const active = btn.getAttribute('data-mood') === moodKey;
+          btn.className = active
+            ? 'mood-btn rounded-xl px-2.5 py-2 text-xs font-medium text-left transition flex items-center gap-2 bg-rose-600 text-white shadow-sm'
+            : 'mood-btn rounded-xl px-2.5 py-2 text-xs font-medium text-left transition flex items-center gap-2 bg-white/60 hover:bg-white/90 border border-rose-200/70 text-rose-950';
+        });
+      }
+
+      // ==========================================
+      // 10. RAYCASTING & ROSE INTERACTION
+      // ==========================================
+      const raycaster = new THREE.Raycaster();
+      const pointerNDC = new THREE.Vector2();
+
+      function inspectRoseAtPointer(clientX, clientY) {
+        const rect = renderer.domElement.getBoundingClientRect();
+        pointerNDC.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+        pointerNDC.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+
+        raycaster.setFromCamera(pointerNDC, camera);
+        const hits = raycaster.intersectObjects(rosesGroup.children, true);
+        if (hits.length > 0) {
+          let obj = hits[0].object;
+          while (obj && obj.userData.flowerNodeIndex === undefined) {
+            obj = obj.parent;
+          }
+          if (obj && obj.userData.flowerNodeIndex !== undefined) {
+            const node = flowerNodes[obj.userData.flowerNodeIndex];
+            if (node) {
+              node.pulse = 1.0;
+              const badge = document.getElementById('inspector-badge');
+              const title = document.getElementById('inspector-title');
+              const desc = document.getElementById('inspector-desc');
+              if (badge) badge.textContent = node.meta.badge;
+              if (title) title.textContent = node.meta.title;
+              if (desc) desc.textContent = node.meta.desc;
+              playRoseChime(node.meta.chimeFreq);
+            }
+          }
+        }
+      }
+
+      // ==========================================
+      // 11. EVENT LISTENERS
+      // ==========================================
+      const domElem = renderer.domElement;
+
+      domElem.addEventListener('pointerdown', (e) => {
+        isDragging = true;
+        isRightDrag = e.button === 2 || e.shiftKey;
+        prevPointer.x = e.clientX;
+        prevPointer.y = e.clientY;
+        pointerDownPos.x = e.clientX;
+        pointerDownPos.y = e.clientY;
+      });
+
+      window.addEventListener('pointermove', (e) => {
+        if (!isDragging) return;
+        const dx = e.clientX - prevPointer.x;
+        const dy = e.clientY - prevPointer.y;
+        prevPointer.x = e.clientX;
+        prevPointer.y = e.clientY;
+
+        if (isRightDrag) {
+          camTargetSpherical.target.x -= dx * 0.014;
+          camTargetSpherical.target.y += dy * 0.014;
+        } else {
+          camTargetSpherical.theta -= dx * 0.007;
+          camTargetSpherical.phi = Math.max(0.18, Math.min(Math.PI * 0.76, camTargetSpherical.phi - dy * 0.007));
+        }
+      });
+
+      window.addEventListener('pointerup', (e) => {
+        if (!isDragging) return;
+        isDragging = false;
+        const moveDist = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
+        if (moveDist < 6) {
+          inspectRoseAtPointer(e.clientX, e.clientY);
+        }
+      });
+
+      domElem.addEventListener('contextmenu', (e) => e.preventDefault());
+
+      domElem.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        camTargetSpherical.radius = Math.max(8.5, Math.min(30, camTargetSpherical.radius + e.deltaY * 0.013));
+      }, { passive: false });
+
+      domElem.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 2) {
+          pinchStartDist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+        }
+      }, { passive: true });
+
+      domElem.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 2 && pinchStartDist > 0) {
+          const dist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+          const delta = pinchStartDist - dist;
+          camTargetSpherical.radius = Math.max(8.5, Math.min(30, camTargetSpherical.radius + delta * 0.035));
+          pinchStartDist = dist;
+        }
+      }, { passive: true });
+
+      function setCamPresetActive(activeId) {
+        ['cam-front', 'cam-top', 'cam-macro'].forEach((id) => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          el.className = id === activeId
+            ? 'px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-rose-600 text-white transition'
+            : 'px-2.5 py-1 rounded-lg text-[11px] font-medium text-rose-900 hover:bg-rose-100/70 transition';
+        });
+      }
+
+      document.getElementById('cam-front').addEventListener('click', () => {
+        camTargetSpherical.radius = 19.2;
+        camTargetSpherical.phi = 1.08;
+        camTargetSpherical.target.set(0, 0.85, 0);
+        setCamPresetActive('cam-front');
+      });
+
+      document.getElementById('cam-top').addEventListener('click', () => {
+        camTargetSpherical.radius = 14.5;
+        camTargetSpherical.phi = 0.36;
+        camTargetSpherical.target.set(0, 1.8, 0);
+        setCamPresetActive('cam-top');
+      });
+
+      document.getElementById('cam-macro').addEventListener('click', () => {
+        camTargetSpherical.radius = 9.8;
+        camTargetSpherical.phi = 0.72;
+        camTargetSpherical.target.set(0, 2.3, 0);
+        setCamPresetActive('cam-macro');
+      });
+
+      document.querySelectorAll('.mood-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          applyMood(btn.getAttribute('data-mood'));
+          playRoseChime(587.33);
+        });
+      });
+
+      document.querySelectorAll('.wrap-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          state.wrapStyle = btn.getAttribute('data-wrap');
+          document.querySelectorAll('.wrap-btn').forEach((b) => {
+            const active = b.getAttribute('data-wrap') === state.wrapStyle;
+            b.className = active
+              ? 'wrap-btn rounded-xl py-1.5 px-2 text-xs font-medium transition bg-rose-600 text-white shadow-sm'
+              : 'wrap-btn rounded-xl py-1.5 px-2 text-xs font-medium transition bg-white/60 hover:bg-white/90 border border-rose-200/70 text-rose-950';
+          });
+          buildSoftBouquetWrap();
+          playRoseChime(523.25);
+        });
+      });
+
+      document.querySelectorAll('.palette-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          state.rosePalette = btn.getAttribute('data-palette');
+          document.querySelectorAll('.palette-btn').forEach((b) => {
+            const active = b.getAttribute('data-palette') === state.rosePalette;
+            b.style.borderWidth = active ? '2px' : '1px';
+            b.style.borderColor = active ? '#e11d48' : 'rgba(253, 164, 175, 0.6)';
+            b.style.opacity = active ? '1' : '0.82';
+          });
+          rebuildRoseBouquet();
+          playRoseChime(659.25);
+        });
+      });
+
+      const sliderBloom = document.getElementById('slider-bloom');
+      const valBloom = document.getElementById('val-bloom');
+      sliderBloom.addEventListener('input', () => {
+        const pct = parseInt(sliderBloom.value, 10);
+        state.bloomFactor = pct / 100;
+        valBloom.textContent = pct + '%';
+        applyBloomOpenness();
+      });
+
+      const sliderBreeze = document.getElementById('slider-breeze');
+      const valBreeze = document.getElementById('val-breeze');
+      sliderBreeze.addEventListener('input', () => {
+        const pct = parseInt(sliderBreeze.value, 10);
+        state.breezeStrength = pct / 100;
+        valBreeze.textContent = pct + '%';
+      });
+
+      document.getElementById('btn-rearrange').addEventListener('click', () => {
+        state.seed = Math.floor(Math.random() * 90000) + 1000;
+        rebuildRoseBouquet();
+        playRoseChime(523.25);
+      });
+
+      document.getElementById('btn-petal-shower').addEventListener('click', () => {
+        state.petalBurstTime = 1.0;
+        flowerNodes.forEach((n) => {
+          n.pulse = 0.55 + Math.random() * 0.45;
+        });
+        playRoseChime(698.46);
+      });
+
+      document.getElementById('chk-autorotate').addEventListener('change', (e) => {
+        state.autoRotate = e.target.checked;
+      });
+
+      document.getElementById('btn-reset-cam').addEventListener('click', () => {
+        camTargetSpherical.radius = 19.2;
+        camTargetSpherical.theta = 0.18;
+        camTargetSpherical.phi = 1.08;
+        camTargetSpherical.target.set(0, 0.85, 0);
+        setCamPresetActive('cam-front');
+      });
+
+      document.getElementById('btn-wireframe').addEventListener('click', () => {
+        state.wireframeMode = (state.wireframeMode + 1) % 3;
+        const labels = ['Polygons: Soft Lines', 'Polygons: Solid', 'Polygons: Wireframe'];
+        document.getElementById('wireframe-label').textContent = labels[state.wireframeMode];
+        rebuildRoseBouquet();
+        playRoseChime(783.99);
+      });
+
+      document.getElementById('btn-sound').addEventListener('click', () => {
+        state.soundEnabled = !state.soundEnabled;
+        document.getElementById('sound-label').textContent = state.soundEnabled ? 'Chimes: On' : 'Chimes: Muted';
+        if (state.soundEnabled) playRoseChime(523.25);
+      });
+
+      document.getElementById('btn-toggle-ui').addEventListener('click', () => {
+        state.uiVisible = !state.uiVisible;
+        const panel = document.getElementById('control-panel');
+        const inspector = document.getElementById('flower-inspector');
+        const label = document.getElementById('toggle-ui-label');
+        if (state.uiVisible) {
+          panel.style.transform = 'translateX(0)';
+          inspector.style.opacity = '1';
+          inspector.style.pointerEvents = 'auto';
+          label.textContent = 'Hide Controls';
+        } else {
+          panel.style.transform = 'translateX(120%)';
+          inspector.style.opacity = '0';
+          inspector.style.pointerEvents = 'none';
+          label.textContent = 'Show Controls';
+        }
+      });
+
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+
+      // ==========================================
+      // 12. ANIMATION LOOP
+      // ==========================================
+      const clock = new THREE.Clock();
+
+      function animate() {
+        requestAnimationFrame(animate);
+        const elapsed = clock.getElapsedTime();
+
+        if (state.autoRotate && !isDragging) {
+          camTargetSpherical.theta += 0.0016;
+        }
+
+        updateCameraPosition();
+
+        const breeze = state.breezeStrength * 0.032;
+        for (let i = 0; i < flowerNodes.length; i++) {
+          const fn = flowerNodes[i];
+          const swayX = Math.sin(elapsed * 1.35 + fn.phase) * breeze;
+          const swayZ = Math.cos(elapsed * 1.1 + fn.phase * 1.2) * breeze;
+
+          fn.head.rotation.x = swayX;
+          fn.head.rotation.z = swayZ;
+
+          if (fn.pulse > 0.001) {
+            fn.pulse *= 0.92;
+            const s = 1 + Math.sin(fn.pulse * Math.PI) * 0.16;
+            fn.head.scale.setScalar(s);
+          } else {
+            fn.head.scale.setScalar(1.0);
+          }
+        }
+
+        if (state.petalBurstTime > 0) {
+          state.petalBurstTime = Math.max(0, state.petalBurstTime - 0.014);
+        }
+        const burstMult = 1 + state.petalBurstTime * 4.0;
+
+        for (let i = 0; i < floatingItems.length; i++) {
+          const item = floatingItems[i];
+          item.y += item.speedY * burstMult;
+          item.angle += item.speedAngle * burstMult;
+          if (item.y > 8.5) item.y = -6.5;
+
+          const r = item.radius + Math.sin(elapsed * 0.8 + i) * 0.35;
+          item.mesh.position.set(
+            Math.cos(item.angle) * r,
+            item.y,
+            Math.sin(item.angle) * r
+          );
+          item.mesh.rotation.x += item.rotSpeed.x * burstMult;
+          item.mesh.rotation.y += item.rotSpeed.y * burstMult;
+          item.mesh.rotation.z += item.rotSpeed.z * burstMult;
+        }
+
+        renderer.render(scene, camera);
+      }
+
+      window.onload = function () {
+        applyMood('pastel');
+        rebuildRoseBouquet();
+        initFloatingRosePetals();
+        animate();
+      };
+    })();
+  </script>
+</body>
+</html>
